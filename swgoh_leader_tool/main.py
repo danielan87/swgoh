@@ -9,10 +9,10 @@ from ocr_space_helper.ocr_space_helper import *
 OCR_API_KEY = '10aa254e3788957'
 
 # in percentage, ratio to crop the text we want (tickets + name)
-x1 = 0.39340102
-y1 = 0.27067669
-x2 = 0.95600677
-y2 = 0.95488722
+# x1 = 0.39340102
+# y1 = 0.27067669
+# x2 = 0.95600677
+# y2 = 0.95488722
 
 
 def RepresentsInt(s):
