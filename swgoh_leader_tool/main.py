@@ -16,7 +16,7 @@ def represents_int(s):
         return False
 
 
-test_file = ocr_space_file(filename=os.path.join('static', 'img', 'eng.png'), api_key=OCR_API_KEY)
+test_file = ocr_space_file(filename=os.path.join('static', 'img', 'screenshot1.jpg'), api_key=OCR_API_KEY)
 old = json.loads(test_file)
 result = old['ParsedResults'][0]['ParsedText']
 print(old['ParsedResults'][0])
@@ -34,4 +34,8 @@ print(names)
 tickets = [t for t in tickets.splitlines() if represents_int(t)]
 print(tickets)
 
+if len(names) > len(tickets):
+    names = names[:-1]
+elif len(names) < len(tickets):
+    tickets = tickets[1:]
 print(pd.DataFrame(tickets, index=names, columns=['Tickets']))
