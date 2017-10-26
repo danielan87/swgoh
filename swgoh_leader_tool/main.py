@@ -16,26 +16,27 @@ def represents_int(s):
         return False
 
 
-test_file = ocr_space_file(filename=os.path.join('static', 'img', 'screenshot1.jpg'), api_key=OCR_API_KEY)
-old = json.loads(test_file)
-result = old['ParsedResults'][0]['ParsedText']
-print(old['ParsedResults'][0])
-if 'INVITE ALLIES' in result:
-    result = result.split('INVITE ALLIES')[1]
-else:
-    result = result.split('ALL')[1]
-delimiters = "RAID TICKETS (DAILY)", "RAID TICKETS (LIFETIME)"
-regexPattern = '|'.join(map(re.escape, delimiters))
-names, tickets = re.split(regexPattern, result)
-names = [n.strip() for n in names.splitlines() if n.strip() and n.strip() not in
-         ['85', 'Officer', 'Member', 'PENDING INVITES', 'ALL', 'MY GUILD']]
-print(names)
+def get_tickets_from_image(image_path):
+    # test_file = ocr_space_file(filename=os.path.join('static', 'img', 'screenshot1.jpg'), api_key=OCR_API_KEY)
+    file = ocr_space_file(filename=image_path, api_key=OCR_API_KEY)
+    text_content = json.loads(file)
+    text_content = text_content['ParsedResults'][0]['ParsedText']
+    if 'INVITE ALLIES' in text_content:
+        text_content = text_content.split('INVITE ALLIES')[1]
+    else:
+        text_content = text_content.split('ALL')[1]
+    delimiters = "RAID TICKETS (DAILY)", "RAID TICKETS (LIFETIME)"
+    regex_pattern = '|'.join(map(re.escape, delimiters))
+    names, tickets = re.split(regex_pattern, text_content)
+    names = [n.strip() for n in names.splitlines() if n.strip() and n.strip() not in
+             ['85', 'Officer', 'Member', 'PENDING INVITES', 'ALL', 'MY GUILD']]
+    tickets = [t for t in tickets.splitlines() if represents_int(t)]
+    if len(names) > len(tickets):
+        names = names[:-1]
+    elif len(names) < len(tickets):
+        tickets = tickets[1:]
+    return pd.DataFrame(tickets, index=names, columns=['Tickets'])
 
-tickets = [t for t in tickets.splitlines() if represents_int(t)]
-print(tickets)
 
-if len(names) > len(tickets):
-    names = names[:-1]
-elif len(names) < len(tickets):
-    tickets = tickets[1:]
-print(pd.DataFrame(tickets, index=names, columns=['Tickets']))
+if __name__ == "__main__":
+    print(get_tickets_from_image(os.path.join('static', 'img', 'screenshot1.jpg')))
