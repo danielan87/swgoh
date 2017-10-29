@@ -2,10 +2,13 @@ import os
 import json
 import re
 import pandas as pd
-
+import datetime
+import redis
 import ocr_space_helper.ocr_space_helper as ocr_space_helper
 
+
 OCR_API_KEY = '10aa254e3788957'
+r = redis.StrictRedis(host='142.44.161.160', port=6379, db=0)
 
 
 def represents_int(s):
@@ -16,21 +19,35 @@ def represents_int(s):
         return False
 
 
-def check_if_ticket_image(image_path, mode='local'):
+def check_if_ticket_image(author, image_path, mode='local'):
     if mode == 'local':
         file = ocr_space_helper.ocr_space_file(filename=image_path, api_key=OCR_API_KEY)
     else:
         file = ocr_space_helper.ocr_space_url(image_path, api_key=OCR_API_KEY)
     text_content = json.loads(file)
     text_content = text_content['ParsedResults'][0]['ParsedText']
-    return 'RAID TICKETS (' in text_content
+    if 'RAID TICKETS (' in text_content:
+        now = datetime.datetime.now()
+        r.sadd("{}:ticket:{}".format(author, now.strftime('%Y%m%d')), text_content)
+        r.expire("{}:ticket:{}".format(author, now.strftime('%Y%m%d')), 2592000)
+        r.set("{}:ticket:lastdate".format(author), now.strftime('%Y%m%d'))
+        r.expire("{}:ticket:lastdate".format(author), 2592000)
+        return True
+    return False
 
 
-def get_tickets_from_image(image_path):
-    # test_file = ocr_space_file(filename=os.path.join('static', 'img', 'screenshot1.jpg'), api_key=OCR_API_KEY)
-    file = ocr_space_helper.ocr_space_file(filename=image_path, api_key=OCR_API_KEY)
-    text_content = json.loads(file)
-    text_content = text_content['ParsedResults'][0]['ParsedText']
+def get_ticket_content(author, date):
+    if date:
+        if r.exists('{}:ticket:{}'.format(author, date)):
+            return [l.decode('utf-8') for l in r.smembers('{}:ticket:{}'.format(author, date))]
+    else:
+        if r.exists('{}:ticket:lastdate'.format(author)):
+            date = r.get('{}:ticket:lastdate'.format(author)).decode('utf-8')
+            return [l.decode('utf-8') for l in r.smembers('{}:ticket:{}'.format(author, date))]
+    return []
+
+
+def get_tickets_from_image(text_content):
     if 'INVITE ALLIES' in text_content:
         text_content = text_content.split('INVITE ALLIES')[1]
     if 'ALL' in text_content:
@@ -71,6 +88,5 @@ def get_tickets_from_image(image_path):
         return pd.DataFrame()
     return result
 
-
-#if __name__ == "__main__":
+# if __name__ == "__main__":
 #    print(get_tickets_from_image(os.path.join('..', 'static', 'img', 'screenshot1.jpg')))
