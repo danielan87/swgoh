@@ -6,7 +6,6 @@ import datetime
 import redis
 import ocr_space_helper.ocr_space_helper as ocr_space_helper
 
-
 OCR_API_KEY = '10aa254e3788957'
 r = redis.StrictRedis(host='142.44.161.160', port=6379, db=0)
 
@@ -20,6 +19,13 @@ def represents_int(s):
 
 
 def check_if_ticket_image(author, image_path, mode='local'):
+    """
+    Check if the given image is a "ticket" image. If it is, return True and save to database.
+    :param author:
+    :param image_path:
+    :param mode:
+    :return:
+    """
     if mode == 'local':
         file = ocr_space_helper.ocr_space_file(filename=image_path, api_key=OCR_API_KEY)
     else:
@@ -27,6 +33,7 @@ def check_if_ticket_image(author, image_path, mode='local'):
     text_content = json.loads(file)
     text_content = text_content['ParsedResults'][0]['ParsedText']
     if 'RAID TICKETS (' in text_content:
+        print("{} is a 'ticket' image! Saving to database.".format(image_path))
         now = datetime.datetime.now()
         r.sadd("{}:ticket:{}".format(author, now.strftime('%Y%m%d')), text_content)
         r.expire("{}:ticket:{}".format(author, now.strftime('%Y%m%d')), 2592000)
@@ -37,17 +44,28 @@ def check_if_ticket_image(author, image_path, mode='local'):
 
 
 def get_ticket_content(author, date):
+    """
+    Return ticket data for an author/date
+    :param author:
+    :param date:
+    :return:
+    """
     if date:
         if r.exists('{}:ticket:{}'.format(author, date)):
-            return [l.decode('utf-8') for l in r.smembers('{}:ticket:{}'.format(author, date))]
+            return [l.decode('utf-8') for l in r.smembers('{}:ticket:{}'.format(author, date))], date
     else:
         if r.exists('{}:ticket:lastdate'.format(author)):
             date = r.get('{}:ticket:lastdate'.format(author)).decode('utf-8')
-            return [l.decode('utf-8') for l in r.smembers('{}:ticket:{}'.format(author, date))]
-    return []
+            return [l.decode('utf-8') for l in r.smembers('{}:ticket:{}'.format(author, date))], date
+    return [], date
 
 
 def get_tickets_from_image(text_content):
+    """
+    Parse an image data and get the list of names/tickets
+    :param text_content:
+    :return:
+    """
     if 'INVITE ALLIES' in text_content:
         text_content = text_content.split('INVITE ALLIES')[1]
     if 'ALL' in text_content:
@@ -87,6 +105,5 @@ def get_tickets_from_image(text_content):
         print("Error when trying to create the DataFrame: \n{}.".format(e))
         return pd.DataFrame()
     return result
-
 # if __name__ == "__main__":
 #    print(get_tickets_from_image(os.path.join('..', 'static', 'img', 'screenshot1.jpg')))
