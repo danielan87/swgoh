@@ -105,5 +105,21 @@ def get_tickets_from_image(text_content):
         print("Error when trying to create the DataFrame: \n{}.".format(e))
         return pd.DataFrame()
     return result
-# if __name__ == "__main__":
-#    print(get_tickets_from_image(os.path.join('..', 'static', 'img', 'screenshot1.jpg')))
+
+
+def get_available_ticket_dates(author):
+    keys = r.keys('{}:*'.format(author))
+    keys = [l.decode('utf-8').split(':')[-1] for l in keys if 'lastdate' not in l.decode('utf-8')]
+    return keys
+
+
+def register_guild_leader(author):
+    r.sadd('guild_leaders', author)
+
+
+def is_registered_guild_leader(author):
+    gls = r.smembers('guild_leaders')
+    for g in gls:
+        if g.decode('utf-8') == author:
+            return True
+    return False
