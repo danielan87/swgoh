@@ -83,8 +83,8 @@ def get_tickets_from_image(text_content):
         return pd.DataFrame()
     names = [n.strip() for n in names.splitlines() if n.strip() and n.strip() not in
              ['Leader', 'Officer', 'Member', 'Memher', 'PENDING INVITES', 'ALL', 'MY GUILD', "RAID TICKETS (DAILY)",
-              "RAID TICKETS (LIFETIME)", 'Lifetime Raid', 'Litetime Raid', 'Daily Raid Tickets', 'Produced:',
-              'ua11Y Hald llCKets']
+              "RAID TICKETS (LIFETIME)", "RAID TICKETS (LIFETIME) e", 'Lifetime Raid', 'Litetime Raid',
+              'Daily Raid Tickets', 'Produced:', 'ua11Y Hald llCKets']
              and not represents_int(n.strip())]
     temp = tickets.splitlines()
     tickets = []
