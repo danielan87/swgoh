@@ -5,6 +5,12 @@ import pandas as pd
 import datetime
 import redis
 import ocr_space_helper.ocr_space_helper as ocr_space_helper
+import cv2
+import numpy as np
+import urllib
+import math
+import requests
+from PIL import Image
 
 OCR_API_KEY = '10aa254e3788957'
 r = redis.StrictRedis(host='142.44.161.160', port=6379, db=0)
@@ -18,7 +24,7 @@ def represents_int(s):
         return False
 
 
-def check_if_ticket_image(author, image_path, mode='local'):
+def read_and_classify_image(author, image_path, mode='local'):
     """
     Check if the given image is a "ticket" image. If it is, return True and save to database.
     :param author:
@@ -26,10 +32,16 @@ def check_if_ticket_image(author, image_path, mode='local'):
     :param mode:
     :return:
     """
-    if mode == 'local':
-        file = ocr_space_helper.ocr_space_file(filename=image_path, api_key=OCR_API_KEY)
-    else:
-        file = ocr_space_helper.ocr_space_url(image_path, api_key=OCR_API_KEY)
+    if mode == 'remote':
+        img_data = requests.get(image_path).content
+        with open('temp.jpg', 'wb') as handler:
+            handler.write(img_data)
+
+        im = Image.open("temp.jpg")
+        if os.stat('temp.jpg').st_size > 1024000:
+            im.save("temp.jpg", format="JPEG", quality=int(1000000 / os.stat('temp.jpg').st_size * 100))
+    file = ocr_space_helper.ocr_space_file(filename="temp.jpg", api_key=OCR_API_KEY)
+    os.remove("temp.jpg")
     text_content = json.loads(file)
     text_content = text_content['ParsedResults'][0]['ParsedText']
     if 'RAID TICKETS (' in text_content:
@@ -39,8 +51,54 @@ def check_if_ticket_image(author, image_path, mode='local'):
         r.expire("{}:ticket:{}".format(author, now.strftime('%Y%m%d')), 2592000)
         r.set("{}:ticket:lastdate".format(author), now.strftime('%Y%m%d'))
         r.expire("{}:ticket:lastdate".format(author), 2592000)
-        return True
-    return False
+        return 'tickets', None, None
+    if 'Platoon' in text_content:
+        regexp = re.compile(r'\d-Star')
+        result = regexp.search(text_content)
+        positions = result.regs[0]
+        star = int(text_content[int(positions[0])])
+        final_count = get_toon_list_from_platoon_img(image_path, mode)
+        return 'platoons', final_count, star
+    return False, None, None
+
+
+def get_toon_list_from_platoon_img(url, mode):
+    if mode == 'local':
+        return "Error"
+    user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.7) Gecko/2009021910 Firefox/3.0.7'
+    headers = {'User-Agent': user_agent, }
+    request = urllib.request.Request(url, None, headers)
+    resp = urllib.request.urlopen(request)
+    img_rgb = np.asarray(bytearray(resp.read()), dtype="uint8")
+    img_rgb = cv2.imdecode(img_rgb, cv2.IMREAD_COLOR)
+    img_rgb = cv2.resize(img_rgb, (1334, 750))
+    total_count = 0
+    icons_path = os.path.join(os.getcwd(), 'static', 'img', 'platoon_icons')
+    icons = os.listdir(icons_path)
+    final_count = {}
+    for i in icons:
+        template = cv2.imread(os.path.join(icons_path, i))
+        h, w = template.shape[:-1]
+        res = cv2.matchTemplate(img_rgb, template, cv2.TM_CCOEFF_NORMED)
+        threshold = .9
+        loc = np.where(res >= threshold)
+        loc_x = list(loc[0])
+        loc_y = list(loc[1])
+        new_x = []
+        new_y = []
+        while loc_x:
+            new_x.append(loc_x[0])
+            loc_x = [i for i in loc_x if not math.isclose(new_x[-1], i, abs_tol=5)]
+        while loc_y:
+            new_y.append(loc_y[0])
+            loc_y = [i for i in loc_y if not math.isclose(new_y[-1], i, abs_tol=5)]
+        loc = (tuple(new_x), tuple(new_y))
+        if len(loc[0]) > 0:
+            final_count[i.split('.')[0]] = len(loc[0])
+            total_count += len(loc[0])
+            if total_count > 15:
+                break
+    return final_count
 
 
 def get_ticket_content(author, date):
