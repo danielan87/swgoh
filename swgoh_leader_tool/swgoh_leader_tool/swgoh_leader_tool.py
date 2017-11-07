@@ -52,17 +52,18 @@ def read_and_classify_image(author, image_path, mode='local'):
         r.set("{}:ticket:lastdate".format(author), now.strftime('%Y%m%d'))
         r.expire("{}:ticket:lastdate".format(author), 2592000)
         return 'tickets', None, None
-    if 'Platoon' in text_content:
+    if 'Platoon' in text_content or 'SQUADRON' in text_content:
         regexp = re.compile(r'\d-Star')
         result = regexp.search(text_content)
         positions = result.regs[0]
         star = int(text_content[int(positions[0])])
-        final_count = get_toon_list_from_platoon_img(image_path, mode)
+        t = 'platoon' if 'Platoon' in text_content else 'squadron'
+        final_count = get_toon_list_from_icon_img(image_path, mode, t)
         return 'platoons', final_count, star
     return False, None, None
 
 
-def get_toon_list_from_platoon_img(url, mode):
+def get_toon_list_from_icon_img(url, mode, t='platoon'):
     if mode == 'local':
         return "Error"
     user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.7) Gecko/2009021910 Firefox/3.0.7'
@@ -73,7 +74,10 @@ def get_toon_list_from_platoon_img(url, mode):
     img_rgb = cv2.imdecode(img_rgb, cv2.IMREAD_COLOR)
     img_rgb = cv2.resize(img_rgb, (1334, 750))
     total_count = 0
-    icons_path = os.path.join(os.getcwd(), 'static', 'img', 'platoon_icons')
+    if t == 'platoon':
+        icons_path = os.path.join(os.getcwd(), 'static', 'img', 'platoon_icons')
+    else:
+        icons_path = os.path.join(os.getcwd(), 'static', 'img', 'squadron_icons')
     icons = os.listdir(icons_path)
     final_count = {}
     for i in icons:
