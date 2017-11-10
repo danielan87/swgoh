@@ -37,9 +37,9 @@ def read_and_classify_image(author, image_path, mode='local'):
         with open('temp.jpg', 'wb') as handler:
             handler.write(img_data)
 
-        im = Image.open("temp.jpg")
         if os.stat('temp.jpg').st_size > 1024000:
-            im.save("temp.jpg", format="JPEG", quality=int(1000000 / os.stat('temp.jpg').st_size * 100))
+            with Image.open("temp.jpg") as im:
+                im.save("temp.jpg", format="JPEG", quality=int(1000000 / os.stat('temp.jpg').st_size * 100))
     file = ocr_space_helper.ocr_space_file(filename="temp.jpg", api_key=OCR_API_KEY)
     os.remove("temp.jpg")
     text_content = json.loads(file)
