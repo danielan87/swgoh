@@ -11,9 +11,9 @@ import urllib
 import math
 import requests
 from PIL import Image
+from .settings import REDIS_CONN_INFO, OCR_API_KEY
 
-OCR_API_KEY = '10aa254e3788957'
-r = redis.StrictRedis(host='142.44.161.160', port=6379, db=0)
+r = redis.StrictRedis(host=REDIS_CONN_INFO.get('hist'), port=REDIS_CONN_INFO.get('port'), db=REDIS_CONN_INFO.get('db'))
 
 
 def represents_int(s):
