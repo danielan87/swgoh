@@ -13,7 +13,7 @@ import requests
 from PIL import Image
 from .settings import REDIS_CONN_INFO, OCR_API_KEY
 
-r = redis.StrictRedis(host=REDIS_CONN_INFO.get('hist'), port=REDIS_CONN_INFO.get('port'), db=REDIS_CONN_INFO.get('db'))
+r = redis.StrictRedis(host=REDIS_CONN_INFO.get('host'), port=REDIS_CONN_INFO.get('port'), db=REDIS_CONN_INFO.get('db'))
 
 
 def represents_int(s):
