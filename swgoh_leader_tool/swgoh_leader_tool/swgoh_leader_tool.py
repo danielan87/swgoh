@@ -11,8 +11,8 @@ import urllib
 import math
 import requests
 from PIL import Image
+import uuid
 from .settings import REDIS_CONN_INFO, OCR_API_KEY
-
 r = redis.StrictRedis(host=REDIS_CONN_INFO.get('host'), port=REDIS_CONN_INFO.get('port'), db=REDIS_CONN_INFO.get('db'))
 
 
@@ -32,16 +32,17 @@ def read_and_classify_image(author, image_path, mode='local'):
     :param mode:
     :return:
     """
+    temp_image_file_name = "{}.jpg".format(uuid.uuid4())
     if mode == 'remote':
         img_data = requests.get(image_path).content
-        with open('temp.jpg', 'wb') as handler:
+        with open(temp_image_file_name, 'wb') as handler:
             handler.write(img_data)
 
-        if os.stat('temp.jpg').st_size > 1024000:
-            with Image.open("temp.jpg") as im:
-                im.save("temp.jpg", format="JPEG", quality=int(1000000 / os.stat('temp.jpg').st_size * 100))
-    file = ocr_space_helper.ocr_space_file(filename="temp.jpg", api_key=OCR_API_KEY)
-    os.remove("temp.jpg")
+        if os.stat(temp_image_file_name).st_size > 1024000:
+            with Image.open(temp_image_file_name) as im:
+                im.save(temp_image_file_name, format="JPEG", quality=int(1000000 / os.stat(temp_image_file_name).st_size * 100))
+    file = ocr_space_helper.ocr_space_file(filename=temp_image_file_name, api_key=OCR_API_KEY)
+    os.remove(temp_image_file_name)
     text_content = json.loads(file)
     text_content = text_content['ParsedResults'][0]['ParsedText']
     if 'RAID TICKETS (' in text_content:
